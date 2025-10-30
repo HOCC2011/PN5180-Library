@@ -1,22 +1,4 @@
-// NAME: PN5180ISO14443.h
-//
-// DESC: ISO14443 protocol on NXP Semiconductors PN5180 module for Arduino.
-//
-// Copyright (c) 2019 by Dirk Carstensen. All rights reserved.
-//
-// This file is part of the PN5180 library for the Arduino environment.
-//
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public
-// License as published by the Free Software Foundation; either
-// version 2.1 of the License, or (at your option) any later version.
-//
-// This library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-// Lesser General Public License for more details.
-//
-#define DEBUG 1
+// #define DEBUG 1
 
 #include <Arduino.h>
 #include "PN5180ISO14443.h"
