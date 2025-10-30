@@ -30,16 +30,20 @@ private:
   uint16_t rxBytesReceived();
 public:
   // Mifare TypeA
-  uint8_t activateTypeA(uint8_t *buffer, uint8_t kind);
+  uint8_t activateTypeA(uint8_t *buffer, uint8_t kind, bool switchToIsoDep);
   bool mifareBlockRead(uint8_t blockno,uint8_t *buffer);
   uint8_t mifareBlockWrite16(uint8_t blockno, uint8_t *buffer);
   bool mifareHalt();
+  bool startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength);
+  uint16_t exchangeApdu(uint8_t *apduCommand, uint16_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen);
   /*
    * Helper functions
    */
-public:   
+public:
   bool setupRF();
-  uint8_t readCardSerial(uint8_t *buffer);    
+  uint8_t readCardSerial(uint8_t *buffer);
+  uint8_t lastSak;
+  uint8_t lastAtsLength;
   bool isCardPresent();    
 };
 
