@@ -1,4 +1,4 @@
-// #define DEBUG 1
+ #define DEBUG 1
 
 #include <Arduino.h>
 #include "PN5180ISO14443.h"
@@ -169,59 +169,52 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
 }
 
 bool PN5180ISO14443::startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength) {
-    // NOTE: The SAK check (this->lastSak & 0x20) is now handled in activateTypeA()
-    // before calling this function, so we skip it here.
+    PN5180DEBUG(F("--- Starting ISO-DEP (RATS) ---\n"));
 
     // --- 1. Prepare and Send the RATS Command ---
     // RATS command: | 0xE0 | FSDI_CID |
     // FSDI = 0x08 (max FSD=2048 bytes) and CID = 0x00 -> FSDI_CID = 0x80
     uint8_t ratsCmd[2] = {0xE0, 0x80};
 
-    // The RATS command must be sent with CRC, which is enabled at the end of anti-collision.
-
+    PN5180DEBUG(F("Sending RATS command...\n"));
     // Send RATS command (2 bytes, 8 bits in last byte of the first frame, no trailing bits)
-    if (!sendData(ratsCmd, 2, 0x00))
+    if (!sendData(ratsCmd, 2, 0x00)) {
+      PN5180DEBUG(F("RATS command failed to send.\n"));
       return false;
+    }
 
-    // --- 2. Read the ATS Response ---
-    // The maximum size the card can send for ATS is 20 bytes (TL=0x14).
-    // The 'maxAtsLength' parameter passed here defines the size of 'atsBuffer'.
-    // We will use the passed 'maxAtsLength' as the maximum to read.
-
-    // **FIX 1: Removed local declaration of maxAtsLength to avoid shadowing.**
-    // **We directly use the function parameter 'maxAtsLength'.**
-
-    // Use the provided atsBuffer and maxAtsLength parameter.
-    // The max ATS size is 20 bytes. The passed maxAtsLength should ideally be >= 20.
-    if (!readData(maxAtsLength, atsBuffer))
+    // --- 2. Read the ATS Response --- // Failed on 31/10/2025
+    // The max ATS size is 20 bytes (TL=0x14).
+    PN5180DEBUG(F("Attempting to read ATS"));
+    if (!readData(maxAtsLength, atsBuffer)) {
+      PN5180DEBUG(F("Reading ATS response failed.\n"));
       return false;
+    }
 
     // --- 3. Process/Store Parameters and Return ---
-
-    // **FIX 2: Need to return the received length.** // Since 'readData' doesn't return the length, we rely on 'rxBytesReceived()'
-    // and store the length in a local variable.
-
     uint8_t actualAtsLength = rxBytesReceived();
 
-    // The first byte of the response (atsBuffer[0]) is TL, the actual length of the ATS data.
-    // If the received length (actualAtsLength) is valid, we can update the caller's knowledge
-    // of the ATS length *by convention* or by using a member variable.
-
-    // Since the original code was trying to write to *atsLength, which is no longer a pointer:
-    // A common library practice is to store the actual received length in the class instance.
-    // Let's assume you have a class member: this->lastAtsLength
-    if (actualAtsLength == 0) return false;
-
-    this->lastAtsLength = actualAtsLength; // Store the actual length for later use
-
-    // Basic validation of the ATS length
-    // TL (atsBuffer[0]) should be between 2 and 20. Actual length should be TL.
-    if (atsBuffer[0] < 2 || atsBuffer[0] > 20) {
-        // Invalid TL byte received
+    if (actualAtsLength == 0) {
+        PN5180DEBUG(F("RATS received 0 bytes.\n"));
         return false;
     }
 
-    // Success: The ATS is stored in atsBuffer, and its length is in this->lastAtsLength.
+    // Basic validation of the ATS length and TL byte
+    // TL (atsBuffer[0]) should be between 2 and 20. Actual length should be TL.
+    if (atsBuffer[0] < 2 || atsBuffer[0] > 20) {
+        PN5180DEBUG(F("Invalid ATS TL byte: "));
+        return false;
+    }
+
+    if (actualAtsLength < atsBuffer[0]) {
+        PN5180DEBUG(F("Warning: Received ATS length is less than TL byte.\n"));
+        // This might be OK if the PN5180 firmware handles it, but we validate strictly.
+        // For now, let it pass if we got at least TL bytes and readData succeeded for maxAtsLength.
+    }
+
+    this->lastAtsLength = actualAtsLength; // Store the actual length for later use
+
+    PN5180DEBUG(F("ISO-DEP (RATS) Complete\n"));
     return true;
 }
 
