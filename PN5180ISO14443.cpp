@@ -51,9 +51,46 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
     uint8_t cmd[7];
     uint8_t uidLength = 0;
 
-    // ... (All your initialization and anti-collision code remains the same) ...
+    // Load standard TypeA protocol
+   	if (!loadRFConfig(0x0, 0x80))
+   	  return 0;
 
-    // --- End of SAK Anti-Collision 1 ---
+   	// OFF Crypto
+    if (!writeRegisterWithAndMask(SYSTEM_CONFIG, 0xFFFFFFBF))
+   	  return 0;
+   	// Clear RX CRC
+   	if (!writeRegisterWithAndMask(CRC_RX_CONFIG, 0xFFFFFFFE))
+   	  return 0;
+    // Clear TX CRC
+    if (!writeRegisterWithAndMask(CRC_TX_CONFIG, 0xFFFFFFFE))
+   	  return 0;
+   	//Send REQA/WUPA, 7 bits in last byte
+   	cmd[0] = (kind == 0) ? 0x26 : 0x52;
+   	if (!sendData(cmd, 1, 0x07))
+   	  return 0;
+   	// READ 2 bytes ATQA into  buffer
+    if (!readData(2, buffer))
+      return 0;
+    //Send Anti collision 1, 8 bits in last byte
+    cmd[0] = 0x93;
+    cmd[1] = 0x20;
+    if (!sendData(cmd, 2, 0x00))
+      return 0;
+    //Read 5 bytes, we will store at offset 2 for later usage
+    if (!readData(5, cmd+2))
+   	  return 0;
+    //Enable RX CRC calculation
+    if (!writeRegisterWithOrMask(CRC_RX_CONFIG, 0x01))
+      return 0;
+    //Enable TX CRC calculation
+    if (!writeRegisterWithOrMask(CRC_TX_CONFIG, 0x01))
+      return 0;
+    //Send Select anti collision 1, the remaining bytes are already in offset 2 onwards
+    cmd[0] = 0x93;
+    cmd[1] = 0x70;
+    if (!sendData(cmd, 7, 0x00))
+      return 0;
+
     //Read 1 byte SAK into buffer[2]
     if (!readData(1, buffer+2))
       return 0;
