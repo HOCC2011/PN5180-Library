@@ -26,13 +26,18 @@ bool PN5180ISO14443::setupRF() {
 }
 
 uint16_t PN5180ISO14443::rxBytesReceived() {
+    PN5180DEBUG(F("Getting RX bytes received...\n"));
 	uint32_t rxStatus;
 	uint16_t len = 0;
-	readRegister(RX_STATUS, &rxStatus);
+	if (readRegister(RX_STATUS, &rxStatus)){
+	  PN5180DEBUG(F("Successfully read register.\n"));
+	} else {
+	  PN5180DEBUG(F("Failed to read register.\n"));
+	}
 	// Lower 9 bits has length
 	len = (uint16_t)(rxStatus & 0x000001ff);
 	return len;
-}
+} // NOT WORKING!!!
 /*
 * buffer : must be 10 byte array
 * buffer[0-1] is ATQA
@@ -50,6 +55,7 @@ uint16_t PN5180ISO14443::rxBytesReceived() {
 uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switchToIsoDep) {
     uint8_t cmd[7];
     uint8_t uidLength = 0;
+    uint8_t lastSak;
 
     // Load standard TypeA protocol
    	if (!loadRFConfig(0x0, 0x80))
@@ -102,7 +108,7 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
        for (int i = 0; i < 4; i++) buffer[3+i] = cmd[2 + i];
        uidLength = 4;
        // *** SAK is final SAK (from Select Anti-collision 1) ***
-       this->lastSak = buffer[2];
+       lastSak = buffer[2];
     }
     else {
        // Take First 3 bytes of UID, Ignore first byte 88(CT)
@@ -143,14 +149,14 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
           return 0;
        uidLength = 7;
        // *** SAK is final SAK (from Select Anti-collision 2) ***
-       this->lastSak = buffer[2];
+       lastSak = buffer[2];
     }
 
     // Check if the code requests to communicate with the PICC in ISO-DEP (ISO 14443-4)
     if (switchToIsoDep) {
         PN5180DEBUG(F("Code requested to communicate in ISO-DEP\n"));
         // SAK Bit 6 (0x20) indicates ISO/IEC 14443-4 support
-        if ((this->lastSak & 0x20) != 0) {
+        if ((lastSak & 0x20) != 0) {
             PN5180DEBUG(F("PICC supports IDO-DEP!\n"));
             // NOTE: You need to pass appropriate parameters for ATS storage to StartIsoDep().
             // This example assumes StartIsoDep is updated to accept an ATS buffer.
@@ -183,50 +189,48 @@ bool PN5180ISO14443::startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength) {
       return false;
     }
 
-    // --- 2. Read the ATS Response --- // Failed on 31/10/2025
+    // --- 2. Read the ATS Response ---
     // The max ATS size is 20 bytes (TL=0x14).
-    PN5180DEBUG(F("Attempting to read ATS"));
-    if (!readData(maxAtsLength, atsBuffer)) {
-      PN5180DEBUG(F("Reading ATS response failed.\n"));
-      return false;
-    }
+    PN5180DEBUG(F("Reading ATS...\n"));
+    readData(maxAtsLength, atsBuffer);
+    PN5180DEBUG(F("Finished reading ATS...\n"));
 
-    // --- 3. Process/Store Parameters and Return ---
-    uint8_t actualAtsLength = rxBytesReceived();
-
-    if (actualAtsLength == 0) {
-        PN5180DEBUG(F("RATS received 0 bytes.\n"));
-        return false;
-    }
 
     // Basic validation of the ATS length and TL byte
     // TL (atsBuffer[0]) should be between 2 and 20. Actual length should be TL.
     if (atsBuffer[0] < 2 || atsBuffer[0] > 20) {
-        PN5180DEBUG(F("Invalid ATS TL byte: "));
+        PN5180DEBUG(F("Invalid ATS TL byte.\n"));
         return false;
+    } else {
+       PN5180DEBUG(F("ATS TL byte is valid.\n"));
     }
 
-    if (actualAtsLength < atsBuffer[0]) {
+    if (sizeof(atsBuffer) < atsBuffer[0]) {
         PN5180DEBUG(F("Warning: Received ATS length is less than TL byte.\n"));
         // This might be OK if the PN5180 firmware handles it, but we validate strictly.
         // For now, let it pass if we got at least TL bytes and readData succeeded for maxAtsLength.
     }
 
-    this->lastAtsLength = actualAtsLength; // Store the actual length for later use
-
     PN5180DEBUG(F("ISO-DEP (RATS) Complete\n"));
     return true;
 }
 
-uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint16_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen) {
+uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen) {
+    PN5180DEBUG(F("Starting to exchange apdu...\n"));
     uint16_t receivedLen = 0;
 
     // 1. Send the Command APDU
     // CRC is handled by the registers set during activation. PCB is assumed to be handled by the driver/firmware.
     // The last parameter (0x00) indicates no trailing bits.
-    if (!sendData(apduCommand, commandLen, 0x00)) {
+    uint8_t selectCommand[4] = {0x5A, 0x86, 0x42, 0x00};
+    //bool tranceive = false;
+    bool tranceive = sendData(selectCommand, 4, 0x00);
+    if (!tranceive) {
+      PN5180DEBUG(F("Failed to send data.\n"));
       // Communication failure during transmission
       return 0;
+    } else {
+       PN5180DEBUG(F("Data successfuly sent.\n"));
     }
 
     // 2. Wait for the PICC (card) to process and respond
