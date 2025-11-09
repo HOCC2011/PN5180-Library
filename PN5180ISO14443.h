@@ -42,7 +42,9 @@ public:
 public:
   bool setupRF();
   uint8_t readCardSerial(uint8_t *buffer);
-  bool isCardPresent();    
+  bool isCardPresent();
+  size_t hexStringToByteArray(String& s, uint8_t* data_out);
+  String bytesToHex(unsigned char* data, unsigned int len);
 };
 
 #endif /* PN5180ISO14443_H */

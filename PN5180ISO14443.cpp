@@ -5,7 +5,7 @@
 #include <PN5180.h>
 #include "Debug.h"
 
-PN5180ISO14443::PN5180ISO14443(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin) 
+PN5180ISO14443::PN5180ISO14443(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin)
               : PN5180(SSpin, BUSYpin, RSTpin) {
 }
 
@@ -167,7 +167,7 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
             }
         } else {
              // Card does not support ISO-DEP (Bit 6 = 0)
-             PN5180DEBUG(F("PICC doesn't support IDO-DEP!\n"));
+             PN5180DEBUG(F("PICC doesn't support IDO-DEP.\n"));
         }
     }
 
@@ -189,11 +189,23 @@ bool PN5180ISO14443::startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength) {
       return false;
     }
 
+    uint16_t len;
+	delay(5);
+	len = rxBytesReceived();
+	PN5180DEBUG(F("Finished reading RX bytes received.\n"));
+	String receivedLenString = String(len, DEC);
+    PN5180DEBUG(F("Length of RX bytes received: "));
+    PN5180DEBUG(receivedLenString);
+    PN5180DEBUG(F("\n"));
+
     // --- 2. Read the ATS Response ---
     // The max ATS size is 20 bytes (TL=0x14).
     PN5180DEBUG(F("Reading ATS...\n"));
-    readData(maxAtsLength, atsBuffer);
+    readData(len, atsBuffer);
     PN5180DEBUG(F("Finished reading ATS...\n"));
+    PN5180DEBUG(F("ATS data: "));
+    PN5180DEBUG(bytesToHex(atsBuffer, len));
+    PN5180DEBUG(F("\n"));
 
 
     // Basic validation of the ATS length and TL byte
@@ -217,14 +229,12 @@ bool PN5180ISO14443::startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength) {
 
 uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen) {
     PN5180DEBUG(F("Starting to exchange apdu...\n"));
-    uint16_t receivedLen = 0;
+    uint16_t receivedLen;
 
     // 1. Send the Command APDU
     // CRC is handled by the registers set during activation. PCB is assumed to be handled by the driver/firmware.
     // The last parameter (0x00) indicates no trailing bits.
-    uint8_t selectCommand[4] = {0x5A, 0x86, 0x42, 0x00};
-    //bool tranceive = false;
-    bool tranceive = sendData(selectCommand, 4, 0x00);
+    bool tranceive = sendData(apduCommand, 4, 0x00);
     if (!tranceive) {
       PN5180DEBUG(F("Failed to send data.\n"));
       // Communication failure during transmission
@@ -241,31 +251,33 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
 
     // 3. Check how many bytes were received from the PICC
     receivedLen = rxBytesReceived();
-
-    // 4. Validate the received length
-    // A Response APDU must contain at least the 2-byte Status Word (SW1 SW2).
-    if (receivedLen < 2) {
-      // Too short for a valid APDU response, or no response received.
-      return 0;
-    }
+    PN5180DEBUG(F("Finished reading RX bytes received.\n"));
+    String receivedLenString = String(receivedLen, DEC);
+    PN5180DEBUG(F("Length of RX bytes received: "));
+    PN5180DEBUG(receivedLenString);
+    PN5180DEBUG(F("\n"));
 
     // Also ensure the received length does not exceed the provided buffer size
     if (receivedLen > maxResponseLen) {
+      PN5180DEBUG(F("ReceivedLen (from PICC) > MaxResponseLen (size of buffer).\n"));
       // If the card sends more data than the buffer can hold, this indicates an issue
       // (e.g., failed chaining or buffer too small). We should still read 'maxResponseLen'
       // to clear the FIFO, but report failure.
-      if (readData(maxResponseLen, responseBuffer)) {
-          // Read successful, but length was clipped. Return 0 for failure to signal buffer overflow/issue.
-          return 0;
-      }
       return 0; // Read failed
     }
 
     // 5. Read the valid data into the response buffer
-    if (!readData(receivedLen, responseBuffer)) {
-      // Read failed even though length was reported
+    bool readSuccess = readData(receivedLen, responseBuffer);
+    if (!readSuccess) {
+      PN5180DEBUG(F("Failed to read data from response buffer.\n"));
       return 0;
+    } else {
+      PN5180DEBUG(F("Finished reading data from response buffer.\n"));
     }
+
+    PN5180DEBUG(F("Response data: "));
+    PN5180DEBUG(bytesToHex(responseBuffer, receivedLen));
+    PN5180DEBUG(F("\n"));
 
     // Success: return the actual length of the received Response APDU.
     return receivedLen;
@@ -319,12 +331,12 @@ bool PN5180ISO14443::mifareHalt() {
 	//mifare Halt
 	cmd[0] = 0x50;
 	cmd[1] = 0x00;
-	sendData(cmd, 2, 0x00);	
+	sendData(cmd, 2, 0x00);
 	return true;
 }
 
 uint8_t PN5180ISO14443::readCardSerial(uint8_t *buffer) {
-  
+
     uint8_t response[10];
 	uint8_t uidLength;
 	// Always return 10 bytes
@@ -343,11 +355,73 @@ uint8_t PN5180ISO14443::readCardSerial(uint8_t *buffer) {
 	  return 0;
     for (int i = 0; i < 7; i++) buffer[i] = response[i+3];
 	mifareHalt();
-	return uidLength;  
+	return uidLength;
 }
 
 bool PN5180ISO14443::isCardPresent() {
     uint8_t buffer[10];
 	return (readCardSerial(buffer) >=4);
+}
+
+/*--------------------Byte conversion voids--------------------*/
+
+size_t hexStringToByteArray(const String& s, uint8_t* data_out) {
+    String hex_string = s;
+    int len = hex_string.length();
+
+    // 1. Pad with leading '0' if length is odd
+    if (len % 2 != 0) {
+        hex_string = "0" + hex_string;
+        len = hex_string.length();
+    }
+
+    size_t data_len = len / 2;
+
+    for (int i = 0; i < len; i += 2) {
+        // Read the first character (high nibble)
+        char high_char = hex_string.charAt(i);
+        // Read the second character (low nibble)
+        char low_char = hex_string.charAt(i + 1);
+
+        // Custom logic to convert hex char to value (0-15)
+        uint8_t high_nibble;
+        if (high_char >= '0' && high_char <= '9') {
+            high_nibble = high_char - '0';
+        } else if (high_char >= 'A' && high_char <= 'F') {
+            high_nibble = high_char - 'A' + 10;
+        } else if (high_char >= 'a' && high_char <= 'f') {
+            high_nibble = high_char - 'a' + 10;
+        } else {
+            // Non-hex character, treat as 0 or handle error
+            high_nibble = 0;
+        }
+
+        uint8_t low_nibble;
+        if (low_char >= '0' && low_char <= '9') {
+            low_nibble = low_char - '0';
+        } else if (low_char >= 'A' && low_char <= 'F') {
+            low_nibble = low_char - 'A' + 10;
+        } else if (low_char >= 'a' && low_char <= 'f') {
+            low_nibble = low_char - 'a' + 10;
+        } else {
+            // Non-hex character, treat as 0 or handle error
+            low_nibble = 0;
+        }
+
+        // Combine nibbles: (high << 4) + low
+        data_out[i / 2] = (high_nibble << 4) | low_nibble;
+    }
+
+    return data_len;
+}
+
+String PN5180ISO14443::bytesToHex(unsigned char* data, unsigned int len) {
+  String hexString = "";
+  for (unsigned int i = 0; i < len; i++) {
+    char temp[3]; // 2 chars for hex, 1 for null terminator
+    sprintf(temp, "%02X", data[i]);
+    hexString += temp;
+  }
+  return hexString;
 }
 
