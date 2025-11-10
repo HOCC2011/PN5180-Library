@@ -221,7 +221,7 @@ bool PN5180ISO14443::startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength) {
        PN5180DEBUG(F("ATS TL byte is valid.\n"));
     }
 
-    if (sizeof(atsBuffer) < atsBuffer[0]) {
+    if (len < atsBuffer[0]) {
         PN5180DEBUG(F("Warning: Received ATS length is less than TL byte.\n"));
         // This might be OK if the PN5180 firmware handles it, but we validate strictly.
         // For now, let it pass if we got at least TL bytes and readData succeeded for maxAtsLength.
