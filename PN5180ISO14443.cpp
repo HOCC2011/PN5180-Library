@@ -4,12 +4,10 @@
 #include "PN5180ISO14443.h"
 #include <PN5180.h>
 #include "Debug.h"
-#include <stdint.h>
-#include <stddef.h> // For size_t
+#include <stdio.h>
+#include <string.h>
 #include <iostream>
-#include <vector>
-#include <cstdint>
-#include <iterator> // Required for std::inserter or std::back_inserter
+#include <cstring> // For memcpy
 
 PN5180ISO14443::PN5180ISO14443(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin)
               : PN5180(SSpin, BUSYpin, RSTpin) {
@@ -255,31 +253,30 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
       PCB[0] = {0x02};
     }
 
-    size_t len_PCB = sizeof(PCB) / sizeof(PCB[0]); // Result: 1
+    uint8_t combinedLen = commandLen + 1;
 
-    size_t apduCommandLen = sizeof(apduCommand) / sizeof(apduCommand[0]); // Result: 9
+    // Define a new buffer to hold the combined command. Max size is usually small for APDUs.
+    uint8_t combinedCommand[255]; // Use a sufficiently large array
 
-    // 1. Create a vector and initialize it with the first array (PCB)
-    std::vector<uint8_t> combined_command(PCB, PCB + len_PCB);
+    // Copy the single PCB byte to the start of the buffer
+    combinedCommand[0] = PCB[0];
 
-    // 2. Append the second array (apduCommand) to the end of the vector
-    combined_command.insert(
-        combined_command.end(),       // Insert at the end
-        apduCommand,                // Start of the second array
-        apduCommand + apduCommandLen        // One past the end of the second array
-    );
+    // Copy the APDU command bytes immediately after the PCB byte
+    memcpy(&combinedCommand[1], apduCommand, commandLen);
 
-    // --- Verification ---
-    std::cout << "Combined Command (Total Length: " << combined_command.size() << " bytes):\n";
-    for (uint8_t byte : combined_command) {
-        // Print each byte as a two-digit hexadecimal number
-        std::cout << std::hex << (int)byte << " ";
-    }
+    String combinedCommandLenString = String(combinedLen, DEC);
+    PN5180DEBUG(F("Length of combined command: "));
+    PN5180DEBUG(combinedCommandLenString);
+    PN5180DEBUG(F("\n"));
+
+    PN5180DEBUG(F("Combined command: "));
+    PN5180DEBUG(bytesToHex(combinedCommand, combinedLen));
+    PN5180DEBUG(F("\n"));
 
     // 1. Send the Command APDU
     // CRC is handled by the registers set during activation. PCB is assumed to be handled by the driver/firmware.
     // The last parameter (0x00) indicates no trailing bits.
-    bool tranceive = sendData(combined_command.data(), combined_command.size(), 0x00);
+    bool tranceive = sendData(combinedCommand, combinedLen, 0x00);
     if (!tranceive) {
       PN5180DEBUG(F("Failed to send data.\n"));
       // Communication failure during transmission
@@ -487,4 +484,5 @@ size_t PN5180ISO14443::remove_first_element(uint8_t* buffer, size_t currentSize)
     // 3. The effective size of the valid data is now one less.
     return currentSize - 1;
 }
+
 
