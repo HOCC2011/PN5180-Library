@@ -4,6 +4,12 @@
 #include "PN5180ISO14443.h"
 #include <PN5180.h>
 #include "Debug.h"
+#include <stdint.h>
+#include <stddef.h> // For size_t
+#include <iostream>
+#include <vector>
+#include <cstdint>
+#include <iterator> // Required for std::inserter or std::back_inserter
 
 PN5180ISO14443::PN5180ISO14443(uint8_t SSpin, uint8_t BUSYpin, uint8_t RSTpin)
               : PN5180(SSpin, BUSYpin, RSTpin) {
@@ -230,11 +236,50 @@ bool PN5180ISO14443::startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength) {
 uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen) {
     PN5180DEBUG(F("Starting to exchange apdu...\n"));
     uint16_t receivedLen;
+    uint8_t PCB[1];
+
+    /*
+    Coding of I-block PCB:
+    Bit 1: Block number -> 0 or 1
+    Bit 2: shall be set to 1 -> 1
+    Bit 3: NAD following, if bit is set to 1 -> 0
+    Bit 4: CID following, if bit is set to 1 -> 0
+    Bit 5: Chaining, if bit is set to 1 -> 0
+    Bit 6: shall be set to 0, 1 is RFU  -> 0
+    Bit 7 & 8: I-Block -> 0, 0
+    */
+
+    if (lastPcbIs2 == true) {
+      PCB[0] = {0x03};
+    } else {
+      PCB[0] = {0x02};
+    }
+
+    size_t len_PCB = sizeof(PCB) / sizeof(PCB[0]); // Result: 1
+
+    size_t apduCommandLen = sizeof(apduCommand) / sizeof(apduCommand[0]); // Result: 9
+
+    // 1. Create a vector and initialize it with the first array (PCB)
+    std::vector<uint8_t> combined_command(PCB, PCB + len_PCB);
+
+    // 2. Append the second array (apduCommand) to the end of the vector
+    combined_command.insert(
+        combined_command.end(),       // Insert at the end
+        apduCommand,                // Start of the second array
+        apduCommand + apduCommandLen        // One past the end of the second array
+    );
+
+    // --- Verification ---
+    std::cout << "Combined Command (Total Length: " << combined_command.size() << " bytes):\n";
+    for (uint8_t byte : combined_command) {
+        // Print each byte as a two-digit hexadecimal number
+        std::cout << std::hex << (int)byte << " ";
+    }
 
     // 1. Send the Command APDU
     // CRC is handled by the registers set during activation. PCB is assumed to be handled by the driver/firmware.
     // The last parameter (0x00) indicates no trailing bits.
-    bool tranceive = sendData(apduCommand, 4, 0x00);
+    bool tranceive = sendData(combined_command.data(), combined_command.size(), 0x00);
     if (!tranceive) {
       PN5180DEBUG(F("Failed to send data.\n"));
       // Communication failure during transmission
@@ -275,12 +320,13 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
       PN5180DEBUG(F("Finished reading data from response buffer.\n"));
     }
 
+    remove_first_element(responseBuffer, receivedLen);
     PN5180DEBUG(F("Response data: "));
-    PN5180DEBUG(bytesToHex(responseBuffer, receivedLen));
+    PN5180DEBUG(bytesToHex(responseBuffer, receivedLen - 1));
     PN5180DEBUG(F("\n"));
 
     // Success: return the actual length of the received Response APDU.
-    return receivedLen;
+    return receivedLen - 1;
 }
 
 bool PN5180ISO14443::mifareBlockRead(uint8_t blockno, uint8_t *buffer) {
@@ -365,7 +411,7 @@ bool PN5180ISO14443::isCardPresent() {
 
 /*--------------------Byte conversion voids--------------------*/
 
-size_t hexStringToByteArray(const String& s, uint8_t* data_out) {
+size_t PN5180ISO14443::hexStringToByteArray(const String& s, uint8_t* data_out) {
     String hex_string = s;
     int len = hex_string.length();
 
@@ -423,5 +469,22 @@ String PN5180ISO14443::bytesToHex(unsigned char* data, unsigned int len) {
     hexString += temp;
   }
   return hexString;
+}
+
+size_t PN5180ISO14443::remove_first_element(uint8_t* buffer, size_t currentSize) {
+    // 1. Check for edge case (empty or single-element array)
+    if (currentSize == 0) {
+        return 0;
+    }
+
+    // 2. Loop through the array, starting from the second element (index 1)
+    //    and moving up to, but not including, the last valid element.
+    for (size_t i = 1; i < currentSize; i++) {
+        // Shift the element at index 'i' to the position 'i - 1'
+        buffer[i - 1] = buffer[i];
+    }
+
+    // 3. The effective size of the valid data is now one less.
+    return currentSize - 1;
 }
 

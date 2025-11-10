@@ -28,6 +28,7 @@ public:
   
 private:
   uint16_t rxBytesReceived();
+  bool lastPcbIs2 = false;
 public:
   // Mifare TypeA
   uint8_t activateTypeA(uint8_t *buffer, uint8_t kind, bool switchToIsoDep);
@@ -43,7 +44,8 @@ public:
   bool setupRF();
   uint8_t readCardSerial(uint8_t *buffer);
   bool isCardPresent();
-  size_t hexStringToByteArray(String& s, uint8_t* data_out);
+  size_t remove_first_element(uint8_t* buffer, size_t currentSize);
+  size_t hexStringToByteArray(const String& s, uint8_t* data_out);
   String bytesToHex(unsigned char* data, unsigned int len);
 };
 
