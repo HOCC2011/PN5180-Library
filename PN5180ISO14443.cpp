@@ -1,4 +1,4 @@
- #define DEBUG 1
+//#define DEBUG 1
 
 #include <Arduino.h>
 #include "PN5180ISO14443.h"
@@ -291,7 +291,7 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
     // The required time here depends on the card and command complexity.
     // This is the FWT (Frame Waiting Time) derived from the ATS.
     // 5ms is often a reasonable starting point for many standard commands.
-    delay(10);
+    delay(5);
 
     // 3. Check how many bytes were received from the PICC
     receivedLen = rxBytesReceived();
@@ -300,6 +300,16 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
     PN5180DEBUG(F("Length of RX bytes received: "));
     PN5180DEBUG(receivedLenString);
     PN5180DEBUG(F("\n"));
+
+    if (receivedLen == 0) {
+      delay(100);
+      receivedLen = rxBytesReceived();
+      PN5180DEBUG(F("Finished reading RX bytes received (again).\n"));
+      String receivedLenString = String(receivedLen, DEC);
+      PN5180DEBUG(F("Length of RX bytes received: "));
+      PN5180DEBUG(receivedLenString);
+      PN5180DEBUG(F("\n"));
+    }
 
     // Also ensure the received length does not exceed the provided buffer size
     if (receivedLen > maxResponseLen) {
