@@ -249,8 +249,10 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
 
     if (lastPcbIs2 == true) {
       PCB[0] = {0x03};
+      lastPcbIs2 = false;
     } else {
       PCB[0] = {0x02};
+      lastPcbIs2 = true;
     }
 
     uint8_t combinedLen = commandLen + 1;
@@ -289,7 +291,7 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
     // The required time here depends on the card and command complexity.
     // This is the FWT (Frame Waiting Time) derived from the ATS.
     // 5ms is often a reasonable starting point for many standard commands.
-    delay(5);
+    delay(10);
 
     // 3. Check how many bytes were received from the PICC
     receivedLen = rxBytesReceived();
