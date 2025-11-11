@@ -258,7 +258,7 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
     uint8_t combinedLen = commandLen + 1;
 
     // Define a new buffer to hold the combined command. Max size is usually small for APDUs.
-    uint8_t combinedCommand[255]; // Use a sufficiently large array
+    uint8_t combinedCommand[combinedLen]; // Use a sufficiently large array
 
     // Copy the single PCB byte to the start of the buffer
     combinedCommand[0] = PCB[0];
