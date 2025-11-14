@@ -36,7 +36,7 @@ public:
   uint8_t mifareBlockWrite16(uint8_t blockno, uint8_t *buffer);
   bool mifareHalt();
   bool startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength);
-  uint16_t exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen);
+  uint16_t exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen, uint8_t readDelay);
   /*
    * Helper functions
    */

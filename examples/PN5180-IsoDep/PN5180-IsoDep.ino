@@ -81,7 +81,7 @@ void loop() {
     if (uidLength > 0) {
       Serial.println(F("IsoDep started successfully."));
       // Send the command and automatically get the length and data
-      responseLength = nfc.exchangeApdu(selectCommand, sizeof(selectCommand), response, sizeof(response));
+      responseLength = nfc.exchangeApdu(selectCommand, sizeof(selectCommand), response, sizeof(response), 10);
       if (responseLength > 0) {
         Serial.print(F("Response data: "));
         Serial.print(bytesToHex(response, responseLength));
