@@ -41,7 +41,7 @@ uint16_t PN5180ISO14443::rxBytesReceived() {
 	// Lower 9 bits has length
 	len = (uint16_t)(rxStatus & 0x000001ff);
 	return len;
-} // NOT WORKING!!!
+}
 /*
 * buffer : must be 10 byte array
 * buffer[0-1] is ATQA
@@ -156,15 +156,23 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
        lastSak = buffer[2];
     }
 
+    if ((lastSak & 0x20) != 0) {
+       PN5180DEBUG(F("PICC supports IDO-DEP!\n"));
+       cardSupportIsoDep = true;
+    } else {
+       cardSupportIsoDep = false;
+    }
+
     // Check if the code requests to communicate with the PICC in ISO-DEP (ISO 14443-4)
+    uint8_t atsBuffer[20];
     if (switchToIsoDep) {
         PN5180DEBUG(F("Code requested to communicate in ISO-DEP\n"));
         // SAK Bit 6 (0x20) indicates ISO/IEC 14443-4 support
-        if ((lastSak & 0x20) != 0) {
+        if (cardSupportIsoDep == true) {
             PN5180DEBUG(F("PICC supports IDO-DEP!\n"));
             // NOTE: You need to pass appropriate parameters for ATS storage to StartIsoDep().
             // This example assumes StartIsoDep is updated to accept an ATS buffer.
-            if (!startIsoDep(buffer + 3 + uidLength, 20)) {
+            if (!startIsoDep(atsBuffer, 20)) {
                 // RATS failed, return error or handle appropriately.
                 // Since this is a critical failure if requested, returning 0 (failure) is reasonable.
                 return 0;
@@ -391,8 +399,7 @@ bool PN5180ISO14443::mifareHalt() {
 }
 
 uint8_t PN5180ISO14443::readCardSerial(uint8_t *buffer) {
-
-    uint8_t response[10];
+    uint8_t response[32];
 	uint8_t uidLength;
 	// Always return 10 bytes
     // Offset 0..1 is ATQA
@@ -409,7 +416,6 @@ uint8_t PN5180ISO14443::readCardSerial(uint8_t *buffer) {
 	if ((response[3] == 0xFF) && (response[4] == 0xFF) && (response[5] == 0xFF) && (response[6] == 0xFF))
 	  return 0;
     for (int i = 0; i < 7; i++) buffer[i] = response[i+3];
-	mifareHalt();
 	return uidLength;
 }
 
@@ -418,6 +424,27 @@ bool PN5180ISO14443::isCardPresent() {
 	return (readCardSerial(buffer) >=4);
 }
 
+bool PN5180ISO14443::isIsoDepCardPresent() {
+    uint8_t buffer[10];
+    uint8_t response[32];
+	uint8_t uidLength;
+	// Always return 10 bytes
+    // Offset 0..1 is ATQA
+    // Offset 2 is SAK.
+    // UID 4 bytes : offset 3 to 6 is UID, offset 7 to 9 to Zero
+    // UID 7 bytes : offset 3 to 9 is UID
+    for (int i = 0; i < 10; i++) response[i] = 0;
+    uidLength = activateTypeA(response, 1, true);
+	if ((response[0] == 0xFF) && (response[1] == 0xFF))
+	  uidLength = 0;
+	// check for valid uid
+	if ((response[3] == 0x00) && (response[4] == 0x00) && (response[5] == 0x00) && (response[6] == 0x00))
+	  uidLength = 0;
+	if ((response[3] == 0xFF) && (response[4] == 0xFF) && (response[5] == 0xFF) && (response[6] == 0xFF))
+	  uidLength = 0;
+    for (int i = 0; i < 7; i++) buffer[i] = response[i+3];
+	return (uidLength >= 4);
+}
 /*--------------------Byte conversion voids--------------------*/
 
 size_t PN5180ISO14443::hexStringToByteArray(const String& s, uint8_t* data_out) {
