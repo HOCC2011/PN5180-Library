@@ -17,10 +17,10 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="76e85a0d-35c2-4672-8b08-3cf3c0937958" name="Changes" comment="added support to let the code define the waiting time before reading data when exchanging apdu commands">
+    <list default="true" id="76e85a0d-35c2-4672-8b08-3cf3c0937958" name="Changes" comment="added bool isIsoDepCardPresent()">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/PN5180ISO14443.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/PN5180ISO14443.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PN5180ISO14443.h" beforeDir="false" afterPath="$PROJECT_DIR$/PN5180ISO14443.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/PN5180-IsoDep/PN5180-IsoDep.ino" beforeDir="false" afterPath="$PROJECT_DIR$/examples/PN5180-IsoDep/PN5180-IsoDep.ino" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -83,7 +83,8 @@
       <updated>1762944393394</updated>
       <workItem from="1762944398999" duration="274000" />
       <workItem from="1763143092408" duration="1247000" />
-      <workItem from="1763195241889" duration="3607000" />
+      <workItem from="1763195241889" duration="3830000" />
+      <workItem from="1763199377471" duration="732000" />
     </task>
     <task id="LOCAL-00001" summary="removed some files">
       <option name="closed" value="true" />
@@ -117,7 +118,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763144342144</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="added bool isIsoDepCardPresent()">
+      <option name="closed" value="true" />
+      <created>1763199062070</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1763199062070</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -126,6 +135,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="removed some files" />
     <MESSAGE value="added support to let the code define the waiting time before reading data when exchanging apdu commands" />
-    <option name="LAST_COMMIT_MESSAGE" value="added support to let the code define the waiting time before reading data when exchanging apdu commands" />
+    <MESSAGE value="added bool isIsoDepCardPresent()" />
+    <option name="LAST_COMMIT_MESSAGE" value="added bool isIsoDepCardPresent()" />
   </component>
 </project>

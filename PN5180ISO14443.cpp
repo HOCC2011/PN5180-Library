@@ -435,6 +435,9 @@ bool PN5180ISO14443::isIsoDepCardPresent() {
     // UID 7 bytes : offset 3 to 9 is UID
     for (int i = 0; i < 10; i++) response[i] = 0;
     uidLength = activateTypeA(response, 1, true);
+    if (uidLength < 4){
+       return false;
+    }
 	if ((response[0] == 0xFF) && (response[1] == 0xFF))
 	  uidLength = 0;
 	// check for valid uid
