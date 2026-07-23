@@ -42,22 +42,25 @@ uint16_t PN5180ISO14443::rxBytesReceived() {
 	len = (uint16_t)(rxStatus & 0x000001ff);
 	return len;
 }
-/*
-* buffer : must be 10 byte array
-* buffer[0-1] is ATQA
-* buffer[2] is sak
-* buffer[3..6] is 4 byte UID
-* buffer[7..9] is remaining 3 bytes of UID for 7 Byte UID tags
-* kind : 0  we send REQA, 1 we send WUPA
-*
-* return value: the uid length:
-* -	zero if no tag was recognized
-* -	single Size UID (4 byte)
-* -	double Size UID (7 byte)
-* -	triple Size UID (10 byte) - not yet supported
-*/
-uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switchToIsoDep) {
-    uint8_t cmd[7];
+
+uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind) {
+
+	/*
+	* buffer : must be 10 byte array
+	* buffer[0-1] is ATQA
+	* buffer[2] is sak
+	* buffer[3..6] is 4 byte UID
+	* buffer[7..9] is remaining 3 bytes of UID for 7 Byte UID tags
+	* kind : 0  we send REQA, 1 we send WUPA
+	*
+	* return value: uid length:
+	* -	zero if no tag was recognized
+	* -	single Size UID (4 byte)
+	* -	double Size UID (7 byte)
+	* -	triple Size UID (10 byte) - not yet supported
+	*/
+
+	uint8_t cmd[7];
     uint8_t uidLength = 0;
     uint8_t lastSak;
 
@@ -74,7 +77,7 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
     // Clear TX CRC
     if (!writeRegisterWithAndMask(CRC_TX_CONFIG, 0xFFFFFFFE))
    	  return 0;
-   	//Send REQA/WUPA, 7 bits in last byte
+   	//Send REQA (0x26) / WUPA (0x52), 7 bits in last byte
    	cmd[0] = (kind == 0) ? 0x26 : 0x52;
    	if (!sendData(cmd, 1, 0x07))
    	  return 0;
@@ -157,86 +160,71 @@ uint8_t PN5180ISO14443::activateTypeA(uint8_t *buffer, uint8_t kind, bool switch
     }
 
     if ((lastSak & 0x20) != 0) {
-       PN5180DEBUG(F("PICC supports IDO-DEP!\n"));
-       cardSupportIsoDep = true;
+		PN5180DEBUG(F("PICC supports IDO-DEP!\n"));
+		cardSupportIsoDep = true;
     } else {
-       cardSupportIsoDep = false;
-    }
-
-    // Check if the code requests to communicate with the PICC in ISO-DEP (ISO 14443-4)
-    uint8_t atsBuffer[20];
-    if (switchToIsoDep) {
-        PN5180DEBUG(F("Code requested to communicate in ISO-DEP\n"));
-        // SAK Bit 6 (0x20) indicates ISO/IEC 14443-4 support
-        if (cardSupportIsoDep == true) {
-            PN5180DEBUG(F("PICC supports IDO-DEP!\n"));
-            // NOTE: You need to pass appropriate parameters for ATS storage to StartIsoDep().
-            // This example assumes StartIsoDep is updated to accept an ATS buffer.
-            if (!startIsoDep(atsBuffer, 20)) {
-                // RATS failed, return error or handle appropriately.
-                // Since this is a critical failure if requested, returning 0 (failure) is reasonable.
-                return 0;
-            }
-        } else {
-             // Card does not support ISO-DEP (Bit 6 = 0)
-             PN5180DEBUG(F("PICC doesn't support IDO-DEP.\n"));
-        }
+		PN5180DEBUG(F("PICC doesn't support IDO-DEP.\n"));
+		cardSupportIsoDep = false;
     }
 
     return uidLength;
 }
 
-bool PN5180ISO14443::startIsoDep(uint8_t *atsBuffer, uint8_t maxAtsLength) {
-    PN5180DEBUG(F("--- Starting ISO-DEP (RATS) ---\n"));
+bool PN5180ISO14443::startIsoDep() {
+	if (cardSupportIsoDep) {
+		uint8_t atsBuffer[20];
+		PN5180DEBUG(F("--- Starting ISO-DEP (RATS) ---\n"));
 
-    // --- 1. Prepare and Send the RATS Command ---
-    // RATS command: | 0xE0 | FSDI_CID |
-    // FSDI = 0x08 (max FSD=2048 bytes) and CID = 0x00 -> FSDI_CID = 0x80
-    uint8_t ratsCmd[2] = {0xE0, 0x80};
+		// --- 1. Prepare and Send the RATS Command ---
+		// RATS command: | 0xE0 | FSDI_CID |
+		// FSDI = 0x08 (max FSD = 2048 bytes) and CID = 0x00 -> FSDI_CID = 0x80
+		uint8_t ratsCmd[2] = {0xE0, 0x80};
 
-    PN5180DEBUG(F("Sending RATS command...\n"));
-    // Send RATS command (2 bytes, 8 bits in last byte of the first frame, no trailing bits)
-    if (!sendData(ratsCmd, 2, 0x00)) {
-      PN5180DEBUG(F("RATS command failed to send.\n"));
-      return false;
-    }
+		PN5180DEBUG(F("Sending RATS command...\n"));
+		// Send RATS command (2 bytes, 8 bits in last byte of the first frame, no trailing bits)
+		if (!sendData(ratsCmd, 2, 0x00)) {
+			PN5180DEBUG(F("RATS command failed to send.\n"));
+			return false;
+		}
 
-    uint16_t len;
-	delay(5);
-	len = rxBytesReceived();
-	PN5180DEBUG(F("Finished reading RX bytes received.\n"));
-	String receivedLenString = String(len, DEC);
-    PN5180DEBUG(F("Length of RX bytes received: "));
-    PN5180DEBUG(receivedLenString);
-    PN5180DEBUG(F("\n"));
+		uint16_t len;
+		delay(5);
+		len = rxBytesReceived();
+		PN5180DEBUG(F("Finished reading RX bytes received.\n"));
+		String receivedLenString = String(len, DEC);
+		PN5180DEBUG(F("Length of RX bytes received: "));
+		PN5180DEBUG(receivedLenString);
+		PN5180DEBUG(F("\n"));
 
-    // --- 2. Read the ATS Response ---
-    // The max ATS size is 20 bytes (TL=0x14).
-    PN5180DEBUG(F("Reading ATS...\n"));
-    readData(len, atsBuffer);
-    PN5180DEBUG(F("Finished reading ATS...\n"));
-    PN5180DEBUG(F("ATS data: "));
-    PN5180DEBUG(bytesToHex(atsBuffer, len));
-    PN5180DEBUG(F("\n"));
+		// --- 2. Read the ATS Response ---
+		// The max ATS size is 20 bytes (TL=0x14).
+		PN5180DEBUG(F("Reading ATS...\n"));
+		readData(len, atsBuffer);
+		PN5180DEBUG(F("Finished reading ATS...\n"));
+		PN5180DEBUG(F("ATS data: "));
+		PN5180DEBUG(bytesToHex(atsBuffer, len));
+		PN5180DEBUG(F("\n"));
 
 
-    // Basic validation of the ATS length and TL byte
-    // TL (atsBuffer[0]) should be between 2 and 20. Actual length should be TL.
-    if (atsBuffer[0] < 2 || atsBuffer[0] > 20) {
-        PN5180DEBUG(F("Invalid ATS TL byte.\n"));
-        return false;
-    } else {
-       PN5180DEBUG(F("ATS TL byte is valid.\n"));
-    }
+		// Basic validation of the ATS length and TL byte
+		// TL (atsBuffer[0]) should be between 2 and 20. Actual length should be TL.
+		if (atsBuffer[0] < 2 || atsBuffer[0] > 20) {
+			PN5180DEBUG(F("Invalid ATS TL byte.\n"));
+			return false;
+		} else {
+			PN5180DEBUG(F("ATS TL byte is valid.\n"));
+		}
 
-    if (len < atsBuffer[0]) {
-        PN5180DEBUG(F("Warning: Received ATS length is less than TL byte.\n"));
-        // This might be OK if the PN5180 firmware handles it, but we validate strictly.
-        // For now, let it pass if we got at least TL bytes and readData succeeded for maxAtsLength.
-    }
+		if (len < atsBuffer[0]) {
+			PN5180DEBUG(F("Warning: Received ATS length is less than TL byte.\n"));
+			// This might be OK if the PN5180 firmware handles it, but we validate strictly.
+			// For now, let it pass if we got at least TL bytes and readData succeeded for maxAtsLength.
+		}
 
-    PN5180DEBUG(F("ISO-DEP (RATS) Complete\n"));
-    return true;
+		PN5180DEBUG(F("ISO-DEP (RATS) Complete\n"));
+		return true;
+	}
+	return false;
 }
 
 uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, uint8_t *responseBuffer, uint16_t maxResponseLen, uint8_t readDelay) {
@@ -346,11 +334,29 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
     return receivedLen - 1;
 }
 
+bool PN5180ISO14443::closeIsoDep() {
+
+	/*
+	Coding of S-block PCB:
+	Bit 1: shall be set to 0, 1 is RFU -> 0
+	Bit 2: shall be set to 1, 0 is RFU -> 1
+	Bit 3: shall be set to 0 -> 0
+	Bit 4: CID following, if bit is set to 1 -> 0
+	Bit 5 & 6: (00)b DESELECT or (11)b WTX -> 0, 0
+	Bit 7 & 8: S-Block -> 1, 1
+	*/
+
+	uint8_t cmd[1];
+	cmd[0] = 0xC2;
+	sendData(cmd, 1, 0x00);
+	return true;
+}
+
 bool PN5180ISO14443::mifareBlockRead(uint8_t blockno, uint8_t *buffer) {
 	bool success = false;
 	uint16_t len;
 	uint8_t cmd[2];
-	// Send mifare command 30,blockno
+	// Send mifare command 30, block no
 	cmd[0] = 0x30;
 	cmd[1] = blockno;
 	if (!sendData(cmd, 2, 0x00))
@@ -359,7 +365,7 @@ bool PN5180ISO14443::mifareBlockRead(uint8_t blockno, uint8_t *buffer) {
 	delay(5);
 	len = rxBytesReceived();
 	if (len == 16) {
-		// READ 16 bytes into  buffer
+		// READ 16 bytes into buffer
 		if (readData(16, buffer))
 		  success = true;
 	}
@@ -398,6 +404,14 @@ bool PN5180ISO14443::mifareHalt() {
 	return true;
 }
 
+bool PN5180ISO14443::typeAHalt() {
+	uint8_t cmd[2];
+	cmd[0] = 0x50;
+	cmd[1] = 0x00;
+	sendData(cmd, 2, 0x00);
+	return true;
+}
+
 uint8_t PN5180ISO14443::readCardSerial(uint8_t *buffer) {
     uint8_t response[32];
 	uint8_t uidLength;
@@ -407,7 +421,7 @@ uint8_t PN5180ISO14443::readCardSerial(uint8_t *buffer) {
     // UID 4 bytes : offset 3 to 6 is UID, offset 7 to 9 to Zero
     // UID 7 bytes : offset 3 to 9 is UID
     for (int i = 0; i < 10; i++) response[i] = 0;
-    uidLength = activateTypeA(response, 1, false);
+    uidLength = activateTypeA(response, 1);
 	if ((response[0] == 0xFF) && (response[1] == 0xFF))
 	  return 0;
 	// check for valid uid
@@ -434,7 +448,10 @@ bool PN5180ISO14443::isIsoDepCardPresent() {
     // UID 4 bytes : offset 3 to 6 is UID, offset 7 to 9 to Zero
     // UID 7 bytes : offset 3 to 9 is UID
     for (int i = 0; i < 10; i++) response[i] = 0;
-    uidLength = activateTypeA(response, 1, true);
+    uidLength = activateTypeA(response, 1);
+	if (cardSupportIsoDep) {
+		startIsoDep();
+	}
     if (uidLength < 4){
        return false;
     }
