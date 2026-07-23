@@ -17,12 +17,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="76e85a0d-35c2-4672-8b08-3cf3c0937958" name="Changes" comment="added bool isIsoDepCardPresent()">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PN5180ISO14443.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/PN5180ISO14443.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PN5180ISO14443.h" beforeDir="false" afterPath="$PROJECT_DIR$/PN5180ISO14443.h" afterDir="false" />
-    </list>
+    <list default="true" id="76e85a0d-35c2-4672-8b08-3cf3c0937958" name="Changes" comment="modifications on activateTypeA and cardSupportIsoDep &amp; added closeIsoDep and typeAHalt" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -147,7 +142,8 @@
     <MESSAGE value="removed some files" />
     <MESSAGE value="added support to let the code define the waiting time before reading data when exchanging apdu commands" />
     <MESSAGE value="added bool isIsoDepCardPresent()" />
-    <option name="LAST_COMMIT_MESSAGE" value="added bool isIsoDepCardPresent()" />
+    <MESSAGE value="modifications on activateTypeA and cardSupportIsoDep &amp; added closeIsoDep and typeAHalt" />
+    <option name="LAST_COMMIT_MESSAGE" value="modifications on activateTypeA and cardSupportIsoDep &amp; added closeIsoDep and typeAHalt" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
