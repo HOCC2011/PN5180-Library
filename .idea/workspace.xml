@@ -17,7 +17,11 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="76e85a0d-35c2-4672-8b08-3cf3c0937958" name="Changes" comment="modifications on activateTypeA and cardSupportIsoDep &amp; added closeIsoDep and typeAHalt" />
+    <list default="true" id="76e85a0d-35c2-4672-8b08-3cf3c0937958" name="Changes" comment="modifications on activateTypeA and cardSupportIsoDep &amp; added closeIsoDep and typeAHalt">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PN5180ISO14443.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/PN5180ISO14443.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PN5180ISO14443.h" beforeDir="false" afterPath="$PROJECT_DIR$/PN5180ISO14443.h" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

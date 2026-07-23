@@ -29,8 +29,9 @@ public:
 private:
   uint16_t rxBytesReceived();
   bool lastPcbIs2 = false;
-public:
   bool cardSupportIsoDep = false;
+public:
+  bool piccSupportIsoDep();
   uint8_t activateTypeA(uint8_t *buffer, uint8_t kind);
   bool mifareBlockRead(uint8_t blockno,uint8_t *buffer);
   uint8_t mifareBlockWrite16(uint8_t blockno, uint8_t *buffer);

@@ -465,6 +465,11 @@ bool PN5180ISO14443::isIsoDepCardPresent() {
     for (int i = 0; i < 7; i++) buffer[i] = response[i+3];
 	return (uidLength >= 4);
 }
+
+bool PN5180ISO14443::piccSupportIsoDep() {
+	return cardSupportIsoDep;
+}
+
 /*--------------------Byte conversion voids--------------------*/
 
 size_t PN5180ISO14443::hexStringToByteArray(const String& s, uint8_t* data_out) {
