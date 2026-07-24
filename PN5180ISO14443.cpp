@@ -298,7 +298,7 @@ uint16_t PN5180ISO14443::exchangeApdu(uint8_t *apduCommand, uint8_t commandLen, 
     PN5180DEBUG(F("\n"));
 
     if (receivedLen == 0) {
-      delay(100);
+      delay(50);
       receivedLen = rxBytesReceived();
       PN5180DEBUG(F("Finished reading RX bytes received (again).\n"));
       String receivedLenString = String(receivedLen, DEC);
